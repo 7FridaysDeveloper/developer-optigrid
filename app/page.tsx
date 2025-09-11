@@ -31,7 +31,7 @@ export default function Home() {
       <Features />
       <ImageSection imageUrl="/bg-opti.webp" />
       <Products />
-      <Blogs numberOfPosts={3} />
+      <Blogs idsPosts={[91, 93, 95]} />
       <Partners />
       <GetInTouch />
     </main>
