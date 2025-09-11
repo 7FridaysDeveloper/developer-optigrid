@@ -1,4 +1,4 @@
-
+"use client";
 
 import { Button } from "@/components/ui/button";
 import ContentSection from "@/components/Section";
@@ -7,8 +7,6 @@ import ReadyToExplore from "@/components/ReadyToExplore";
 import Image from "next/image";
 import Link from "next/link";
 import { OPENBESS_FEATURE_CARDS } from "@/constants/consts";
-import { getSEOBySlug } from "@/graphql/api/seo";
-import { generateMetadataFromSEO } from "@/lib/seo";
 
 // Key benefits for the OpenBESS platform
 const PLATFORM_BENEFITS = [
@@ -20,24 +18,6 @@ const PLATFORM_BENEFITS = [
 /**
  * Feature card component for displaying platform capabilities
  */
-export const dynamic = "force-static";
-export const revalidate = 3600;
-
-export async function generateMetadata() {
-  // Using await for params to ensure it's properly resolved before accessing properties
-
-  try {
-    const seoData = await getSEOBySlug('openbess', 'page', ['openbess']);
-
-    return generateMetadataFromSEO(
-      seoData.seoData,
-      seoData.generalSettings,
-      `${process.env.NEXT_PUBLIC_SITE_URL}/products`
-    );
-  } catch (error) {
-    return null;
-  }
-}
 const FeatureCard = ({
   icon,
   title,
