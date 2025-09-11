@@ -9,7 +9,7 @@ export type WordPressPostList = Omit<WordPressPostBase, 'content'>;
 
 export const GET_ALL_POSTS_QUERY = `
   query GetAllPosts($first: Int!) {
-    posts(first: $first) {
+    posts(first: $first, where: { status: PUBLISH }) {
       nodes {
         databaseId
         title
