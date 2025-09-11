@@ -1,3 +1,4 @@
+"use client";
 import GetInTouch from "@/components/GetInTouch";
 import Leadership from "@/components/Leadership";
 import Partners from "@/components/Partners";
@@ -6,21 +7,7 @@ import Timeline from "@/components/Timeline";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
-import { getSEOBySlug } from "@/graphql/api/seo";
-import { generateMetadataFromSEO } from "@/lib/seo";
-export async function generateMetadata() {
-  try {
-    const seoData = await getSEOBySlug('about-us', 'page', ['about-us']);
 
-    return generateMetadataFromSEO(
-      seoData.seoData,
-      seoData.generalSettings,
-      `${process.env.NEXT_PUBLIC_SITE_URL}`
-    );
-  } catch (error) {
-    return null;
-  }
-}
 export default function AboutPage() {
   return (
     <main className="bg-foundation-color">
