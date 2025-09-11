@@ -73,6 +73,12 @@ const BlogDetailPage = async ({ params }: BlogDetailPageProps) => {
 
     try {
         const post = await getPostBySlug(slug);
+
+        // Check if post is published, redirect to 404 if not
+        if (post.status !== 'publish') {
+            notFound();
+        }
+
         const currentUrl = getBlogUrl(post.slug);
 
         return (
