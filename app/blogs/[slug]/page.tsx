@@ -73,9 +73,9 @@ const BlogDetailPage = async ({ params }: BlogDetailPageProps) => {
 
     try {
         const post = await getPostBySlug(slug);
-
+        console.log(post)
         // Check if post is published, redirect to 404 if not
-        if (post.status !== 'publish') {
+        if (!post || post.status !== 'publish') {
             notFound();
         }
 
@@ -139,6 +139,7 @@ const BlogDetailPage = async ({ params }: BlogDetailPageProps) => {
             </div>
         );
     } catch (error) {
+        console.log('error component')
         notFound();
     }
 };
