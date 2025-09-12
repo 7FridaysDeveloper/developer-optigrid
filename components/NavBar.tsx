@@ -138,7 +138,7 @@ const NavBar = () => {
                 </NavigationMenuList>
               </NavigationMenu>
               <HoverPrefetchLink
-                href="/about"
+                href="/about-us"
                 className="flex items-center text-white transition"
                 onClick={handleNavigation}
               >

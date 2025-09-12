@@ -67,7 +67,7 @@ export default function AboutSection() {
           </p>
 
           <Link
-            href="/about"
+            href="/about-us"
             className="text-foundation-light-normal flex cursor-pointer items-center justify-start !pl-0 font-semibold"
             aria-label="Learn more about OptiGrid"
           >
