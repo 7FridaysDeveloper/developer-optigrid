@@ -5,9 +5,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://optigrid.com'
 
     try {
-        const posts = await getAllPosts(['blogs', 'sitemap'])
+        const posts = await getAllPosts(['blog', 'sitemap'])
         return posts.map((post) => ({
-            url: `${baseUrl}/blogs/${post.slug}/`,
+            url: `${baseUrl}/blog/${post.slug}/`,
             lastModified: new Date(post.modified || post.date),
             changeFrequency: 'monthly' as const,
             priority: 0.6,

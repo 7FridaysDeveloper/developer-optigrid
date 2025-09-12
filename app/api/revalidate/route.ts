@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
     try {
         if (tag === 'all') {
             // Clear all cache by revalidating common tags and paths
-            const commonTags = ['blogs', 'sitemap', 'home', 'home-posts-picked'];
-            const commonPaths = ['/', '/blogs', '/about', '/products', '/contact-us'];
+            const commonTags = ['blog', 'sitemap', 'home', 'home-posts-picked'];
+            const commonPaths = ['/', '/blog', '/about', '/products', '/contact-us'];
 
             // Revalidate all common tags
             commonTags.forEach(commonTag => {

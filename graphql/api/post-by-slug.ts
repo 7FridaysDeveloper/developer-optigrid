@@ -9,8 +9,9 @@ import { GET_POST_BY_SLUG_QUERY, WordPressPostBySlug } from '../queries/post-by-
  */
 export async function getPostBySlug(slug: string): Promise<WordPressPostBySlug> {
     const data = await fetchGraphQl<any>(GET_POST_BY_SLUG_QUERY, { slug }, [slug], `post-slug-${slug}`);
-
+    console.log(data)
     if (!data.postBy) {
+        console.log(`Post with slug "${slug}" not found`)
         throw new Error(`Post with slug "${slug}" not found`);
     }
 

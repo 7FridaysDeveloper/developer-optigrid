@@ -1,4 +1,3 @@
-"use client";
 
 import GetInTouch from "@/components/GetInTouch";
 import ImageSection from "@/components/ImageSection";
@@ -11,8 +10,25 @@ import Image from "next/image";
 import Link from "next/link";
 import HowWereDifferent from "@/components/AdvantageSection";
 import OptibidderFeatures from "@/components/OptibidderFeatures";
+import { getSEOBySlug } from "@/graphql/api/seo";
+import { generateMetadataFromSEO } from "@/lib/seo";
+export const dynamic = "force-static";
+export async function generateMetadata() {
+  try {
+    const seoData = await getSEOBySlug('optibidder', 'page', ['optibidder']);
 
-function OptiBidder() {
+
+    return generateMetadataFromSEO(
+      seoData.seoData,
+      seoData.generalSettings,
+      `${process.env.NEXT_PUBLIC_SITE_URL}/products`
+    );
+  } catch (error) {
+    console.log('error seo', 'optibidder')
+    return null;
+  }
+}
+async function OptiBidder() {
   return (
     <div className="bg-foundation-color min-h-screen py-20">
       {/* Hero section with main value proposition */}
@@ -132,4 +148,5 @@ function OptiBidder() {
     </div>
   );
 }
+
 export default OptiBidder;

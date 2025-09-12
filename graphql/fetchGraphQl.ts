@@ -40,7 +40,7 @@ export async function fetchGraphQl<T = any>(
         throw new Error('WORDPRESS_GRAPHQL_URL environment variable is not set');
     }
 
-    const response = await fetch(`${WORDPRESS_GRAPHQL_URL}?key=${key}` , {
+    const response = await fetch(`${WORDPRESS_GRAPHQL_URL}?key=${key}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

@@ -15,6 +15,7 @@ class NextJSRevalidation {
     
     private $nextjs_url;
     private $secret_key;
+    private $nextjs_base_url;
     
     public function __construct() {
         // Initialize hooks
@@ -22,87 +23,20 @@ class NextJSRevalidation {
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_init', array($this, 'settings_init'));
         
-        // Post hooks
-        add_action('save_post', array($this, 'handle_post_save'), 10, 3);
+        // Main hook - handles all post and page operations
+        add_action('wp_after_insert_post', array($this, 'handle_post_after_insert'), 10, 4);
+        
+        // Deletion hooks (wp_after_insert_post doesn't cover deletions)
         add_action('delete_post', array($this, 'handle_post_delete'));
         add_action('wp_trash_post', array($this, 'handle_post_delete'));
-        add_action('untrash_post', array($this, 'handle_post_untrash'));
-        
-        // Page hooks
-        add_action('save_post_page', array($this, 'handle_page_save'), 10, 3);
-        
-        // Comment hooks (optional)
-        add_action('comment_post', array($this, 'handle_comment_change'));
-        add_action('edit_comment', array($this, 'handle_comment_change'));
-        add_action('delete_comment', array($this, 'handle_comment_change'));
     }
     
     public function init() {
         $this->nextjs_url = get_option('nextjs_revalidation_url', '');
         $this->secret_key = get_option('nextjs_revalidation_secret', '');
+        $this->nextjs_base_url = get_option('nextjs_base_url', '');
     }
     
-    /**
-     * Handle post save/update
-     */
-    public function handle_post_save($post_id, $post, $update) {
-        // Skip autosaves and revisions
-        if (wp_is_post_autosave($post_id) || wp_is_post_revision($post_id)) {
-            return;
-        }
-        
-        // Only handle published posts
-        if ($post->post_status !== 'publish') {
-            return;
-        }
-        
-        // Only handle posts (not pages or other post types)
-        if ($post->post_type !== 'post') {
-            return;
-        }
-        
-        $post_slug = $post->post_name;
-        
-        if ($update) {
-            // Post updated - revalidate specific post, blogs list, and sitemap
-            $this->revalidate_tag($post_slug);
-            $this->revalidate_tag('blogs');
-            $this->revalidate_tag('sitemap');
-            
-            // Log action
-            error_log("NextJS Revalidation: Post updated - {$post_slug}");
-        } else {
-            // New post created - revalidate blogs list and sitemap
-            $this->revalidate_tag('blogs');
-            $this->revalidate_tag('sitemap');
-            
-            // Log action
-            error_log("NextJS Revalidation: New post created - revalidating blogs and sitemap");
-        }
-    }
-    
-    /**
-     * Handle page save/update
-     */
-    public function handle_page_save($post_id, $post, $update) {
-        // Skip autosaves and revisions
-        if (wp_is_post_autosave($post_id) || wp_is_post_revision($post_id)) {
-            return;
-        }
-        
-        // Only handle published pages
-        if ($post->post_status !== 'publish') {
-            return;
-        }
-        
-        $page_slug = $post->post_name;
-        
-        // Revalidate specific page
-        $this->revalidate_tag($page_slug);
-        
-        // Log action
-        error_log("NextJS Revalidation: Page updated - {$page_slug}");
-    }
     
     /**
      * Handle post deletion
@@ -111,53 +45,138 @@ class NextJSRevalidation {
         $post = get_post($post_id);
         
         if ($post && $post->post_type === 'post') {
+            $post_slug = $post->post_name;
+            
             // Post deleted - revalidate blogs list and sitemap
-            $this->revalidate_tag('blogs');
+            $this->revalidate_tag('blog');
             $this->revalidate_tag('sitemap');
+            
+            // Warm cache for blogs page (post page will 404)
+            $this->warm_cache_pages(array(
+                "/blog/{$post_slug}",
+                "/blog"
+            ));
             
             // Log action
             error_log("NextJS Revalidation: Post deleted - revalidating blogs and sitemap");
         }
     }
     
-    /**
-     * Handle post untrash
-     */
-    public function handle_post_untrash($post_id) {
-        $post = get_post($post_id);
-        
-        if ($post && $post->post_type === 'post' && $post->post_status === 'publish') {
-            $post_slug = $post->post_name;
-            
-            // Post restored - revalidate specific post, blogs list, and sitemap
-            $this->revalidate_tag($post_slug);
-            $this->revalidate_tag('blogs');
-            $this->revalidate_tag('sitemap');
-            
-            // Log action
-            error_log("NextJS Revalidation: Post restored - {$post_slug}");
-        }
-    }
     
     /**
-     * Handle comment changes
+     * Handle post after all operations are complete
+     * This fires after save_post and transition_post_status
      */
-    public function handle_comment_change($comment_id) {
-        $comment = get_comment($comment_id);
-        
-        if ($comment) {
-            $post = get_post($comment->comment_post_ID);
-            
-            if ($post && $post->post_type === 'post') {
-                $post_slug = $post->post_name;
-                
-                // Comment changed - revalidate specific post
-                $this->revalidate_tag($post_slug);
-                
-                // Log action
-                error_log("NextJS Revalidation: Comment changed for post - {$post_slug}");
-            }
+    public function handle_post_after_insert($post_id, $post, $update, $post_before) {
+        // Handle both posts and pages
+        if ($post->post_type !== 'post' && $post->post_type !== 'page') {
+            return;
         }
+
+        // Skip autosaves and revisions
+        if (wp_is_post_autosave($post_id) || wp_is_post_revision($post_id)) {
+            return;
+        }
+
+        $slug = $post->post_name;
+        $current_status = $post->post_status;
+        $previous_status = $post_before ? $post_before->post_status : '';
+
+        // Determine what tags to revalidate based on post type and status
+        $tags_to_revalidate = array();
+        $urls_to_warm = array();
+
+        if ($post->post_type === 'post') {
+            // Handle posts
+            $tags_to_revalidate[] = $slug;
+            $urls_to_warm[] = "/blog/{$slug}";
+
+            // If post is or was published, also revalidate blogs and sitemap
+            if ($current_status === 'publish' || $previous_status === 'publish') {
+                $tags_to_revalidate[] = 'blog';
+                $tags_to_revalidate[] = 'sitemap';
+                $urls_to_warm[] = '/blog';
+            }
+
+            error_log("NextJS Revalidation: Post after insert - {$slug} (status: {$current_status})");
+            
+        } elseif ($post->post_type === 'page') {
+            // Handle pages - only for published pages
+            if ($current_status === 'publish') {
+                $tags_to_revalidate[] = $slug;
+                $urls_to_warm[] = "/{$slug}";
+            }
+
+            error_log("NextJS Revalidation: Page after insert - {$slug} (status: {$current_status})");
+        }
+
+        // Perform revalidation
+        foreach ($tags_to_revalidate as $tag) {
+            $this->revalidate_tag($tag);
+        }
+
+        // Warm cache
+        if (!empty($urls_to_warm)) {
+            $this->warm_cache_pages($urls_to_warm);
+        }
+    }
+
+    
+    /**
+     * Warm up cache for specific pages using multi-cURL
+     */
+    private function warm_cache_pages($urls) {
+        if (empty($this->nextjs_base_url) || empty($urls)) {
+            return false;
+        }
+
+        $multi_handle = curl_multi_init();
+        $curl_handles = array();
+
+        // Create individual cURL handles for each URL
+        foreach ($urls as $url) {
+            $full_url = rtrim($this->nextjs_base_url, '/') . $url;
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $full_url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'WordPress NextJS Cache Warmer');
+            curl_setopt($ch, CURLOPT_HEADER, false);
+            
+            curl_multi_add_handle($multi_handle, $ch);
+            $curl_handles[] = $ch;
+        }
+
+        // Execute all cURL handles simultaneously
+        $running = null;
+        do {
+            curl_multi_exec($multi_handle, $running);
+            curl_multi_select($multi_handle);
+        } while ($running > 0);
+
+        // Check results and clean up
+        $success_count = 0;
+        foreach ($curl_handles as $i => $ch) {
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $url = $urls[$i];
+            
+            if ($http_code >= 200 && $http_code < 400) {
+                $success_count++;
+                error_log("NextJS Cache Warmed: {$url} (HTTP {$http_code})");
+            } else {
+                error_log("NextJS Cache Warm Failed: {$url} (HTTP {$http_code})");
+            }
+            
+            curl_multi_remove_handle($multi_handle, $ch);
+            curl_close($ch);
+        }
+
+        curl_multi_close($multi_handle);
+        
+        error_log("NextJS Cache Warming: {$success_count}/" . count($urls) . " pages warmed successfully");
+        return $success_count > 0;
     }
     
     /**
@@ -217,6 +236,7 @@ class NextJSRevalidation {
     public function settings_init() {
         register_setting('nextjs_revalidation', 'nextjs_revalidation_url');
         register_setting('nextjs_revalidation', 'nextjs_revalidation_secret');
+        register_setting('nextjs_revalidation', 'nextjs_base_url');
         
         add_settings_section(
             'nextjs_revalidation_section',
@@ -240,6 +260,14 @@ class NextJSRevalidation {
             'nextjs_revalidation',
             'nextjs_revalidation_section'
         );
+        
+        add_settings_field(
+            'nextjs_base_url',
+            'Next.js Site URL',
+            array($this, 'base_url_render'),
+            'nextjs_revalidation',
+            'nextjs_revalidation_section'
+        );
     }
     
     public function url_render() {
@@ -252,6 +280,12 @@ class NextJSRevalidation {
         $secret = get_option('nextjs_revalidation_secret');
         echo '<input type="password" name="nextjs_revalidation_secret" value="' . esc_attr($secret) . '" size="50" />';
         echo '<p class="description">Secret key for authenticating revalidation requests</p>';
+    }
+    
+    public function base_url_render() {
+        $base_url = get_option('nextjs_base_url');
+        echo '<input type="url" name="nextjs_base_url" value="' . esc_attr($base_url) . '" size="50" placeholder="https://your-nextjs-site.com" />';
+        echo '<p class="description">Base URL of your Next.js site for cache warming (without trailing slash)</p>';
     }
     
     public function settings_section_callback() {
