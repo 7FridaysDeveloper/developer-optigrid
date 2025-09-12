@@ -32,7 +32,7 @@ const BlogCard = ({ post }: BlogCardProps) => {
       }}
       viewport={{ once: true }}
     >
-      <Link href={`/blogs/${post.slug}`} className="block">
+      <Link href={`/blog/${post.slug}`} className="block">
         <Card className="group h-full overflow-hidden rounded-lg border-0 bg-transparent p-0 transition-all duration-300 hover:-translate-y-2 hover:transform">
           <CardHeader className="p-0">
             <div className="relative h-60 w-full overflow-hidden rounded-2xl">

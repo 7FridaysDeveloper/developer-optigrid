@@ -9,7 +9,7 @@ import type { BlogPost } from "@/types/blog";
  * Fetch all posts
  * @throws {Error} When fetch fails
  */
-export async function getAllPosts(tags: string[] = ['blogs']): Promise<WordPressPostList[]> {
+export async function getAllPosts(tags: string[] = ['blog']): Promise<WordPressPostList[]> {
     const data = await fetchGraphQl<any>(GET_ALL_POSTS_QUERY, { first: 10000 }, tags, 'blogs');
     return data.posts.nodes;
 }

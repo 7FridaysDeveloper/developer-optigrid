@@ -146,7 +146,7 @@ const NavBar = () => {
                 <LoadingIndicator className="ml-1" showSpinner={false} />
               </HoverPrefetchLink>
               <HoverPrefetchLink
-                href="/blogs"
+                href="/blog"
                 className="flex items-center text-white transition"
                 onClick={handleNavigation}
               >
@@ -235,7 +235,7 @@ const NavBar = () => {
               variant="ghost"
               className="block w-full justify-start py-2 text-white transition hover:bg-transparent"
             >
-              <Link href="/blogs" onClick={handleNavigation}>
+              <Link href="/blog" onClick={handleNavigation}>
                 News & Insights
               </Link>
             </Button>

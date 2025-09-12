@@ -80,7 +80,7 @@ const Footer = () => {
               <ul className="space-y-3">
                 <li>
                   <Link
-                    href="/blogs"
+                    href="/blog"
                     className="text-sm transition-colors duration-200 hover:text-[#4893C1]"
                   >
                     News & Insights
