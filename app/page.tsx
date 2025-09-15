@@ -26,7 +26,7 @@ export const dynamic = "force-static";
 export const revalidate = 3600;
 export async function generateMetadata() {
   try {
-    const seoData = await getSEOBySlug('home', 'page', ['home']);
+    const seoData = await getSEOBySlug('home', 'page', ['home', '/']);
 
     return generateMetadataFromSEO(
       seoData.seoData,

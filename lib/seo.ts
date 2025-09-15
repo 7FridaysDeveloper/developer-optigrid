@@ -2,14 +2,13 @@
 
 import type { Metadata } from 'next';
 import type { PostSEOData, PageSEOData, GeneralSettings } from '@/graphql/queries/seo';
+import { getGeneralSettings } from '@/graphql/api/seo';
 
 /**
  * Check if SEO indexing is globally enabled and page allows indexing
  */
 function shouldAllowIndexing(seoData: PostSEOData | PageSEOData): boolean {
-    if (process.env.NEXT_PUBLIC_ENABLE_SEO_INDEXING !== 'true') {
-        return false;
-    }
+
     return seoData.seo?.metaRobotsNoindex !== 'noindex';
 }
 
@@ -17,9 +16,7 @@ function shouldAllowIndexing(seoData: PostSEOData | PageSEOData): boolean {
  * Check if SEO following is globally enabled and page allows following
  */
 function shouldAllowFollowing(seoData: PostSEOData | PageSEOData): boolean {
-    if (process.env.NEXT_PUBLIC_ENABLE_SEO_INDEXING !== 'true') {
-        return false;
-    }
+
     return seoData.seo?.metaRobotsNofollow !== 'nofollow';
 }
 
@@ -43,15 +40,139 @@ function getImageType(imageUrl: string): string {
 }
 
 /**
+ * Generate OpenGraph metadata for different content types
+ */
+function getMetaOpenGraph(
+    seoData: PostSEOData | PageSEOData,
+    title: string,
+    description: string,
+    fullUrl: string,
+    generalSettings?: GeneralSettings,
+    contentType: 'page' | 'post' = 'page'
+) {
+    const ogImage = seoData.seo?.opengraphImage?.sourceUrl;
+
+    const openGraphDescription = seoData.seo?.opengraphDescription || description;
+    const baseOpenGraph = {
+        type: contentType === 'post' ? 'article' as const : 'website' as const,
+        title: seoData.seo?.title || title,
+        ...(openGraphDescription && { description: openGraphDescription }),
+        url: fullUrl,
+        ...(generalSettings?.title && { siteName: generalSettings.title }),
+        locale: 'nb-NO', // can be made dynamic later
+        ...(ogImage && {
+            images: [
+                {
+                    url: ogImage,
+                    alt: seoData.seo?.opengraphImage?.altText || title,
+                    width: 1200,
+                    height: 630,
+                    type: getImageType(ogImage),
+                },
+            ],
+        }),
+    };
+
+    // Add specific fields for articles (posts)
+    if (contentType === 'post') {
+        return {
+            ...baseOpenGraph,
+            publishedTime: seoData.date,
+            modifiedTime: seoData.modified,
+            ...(seoData.seo?.opengraphAuthor && {
+                authors: [seoData.seo.opengraphAuthor],
+            }),
+        };
+    }
+
+    // Return base OpenGraph for pages
+    return baseOpenGraph;
+}
+
+/**
+ * Generate JSON-LD structured data for different content types
+ */
+function getMetaJsonLd(
+    seoData: PostSEOData | PageSEOData,
+    title: string,
+    description: string,
+    fullUrl: string,
+    siteUrl: string,
+    generalSettings?: GeneralSettings,
+    contentType: 'page' | 'post' = 'page'
+) {
+    const ogImage = seoData.seo?.opengraphImage?.sourceUrl;
+
+    const baseStructuredData = {
+        '@context': 'https://schema.org',
+        '@type': contentType === 'post' ? 'Article' : 'WebPage',
+        ...(description && { description }),
+        url: fullUrl,
+        ...(ogImage && {
+            image: [
+                {
+                    '@type': 'ImageObject',
+                    url: ogImage,
+                    width: 1200,
+                    height: 630,
+                    caption: seoData.seo?.opengraphImage?.altText || title,
+                },
+            ],
+        }),
+        ...(seoData.seo?.metaKeywords && {
+            keywords: seoData.seo.metaKeywords.split(',').map(k => k.trim()),
+        }),
+    };
+
+    // Add specific fields for articles (posts)
+    if (contentType === 'post') {
+        return {
+            ...baseStructuredData,
+            headline: title,
+            datePublished: seoData.date,
+            dateModified: seoData.modified,
+            ...(( seoData.seo?.opengraphAuthor || generalSettings?.title) && {
+                author: {
+                    '@type': 'Organization',
+                    name: seoData.seo?.opengraphAuthor || generalSettings?.title,
+                },
+            }),
+            ...(generalSettings?.title && {
+                publisher: {
+                    '@type': 'Organization',
+                    name: generalSettings.title,
+                    url: siteUrl,
+                },
+            }),
+            mainEntityOfPage: {
+                '@type': 'WebPage',
+                '@id': fullUrl,
+            },
+        };
+    }
+
+    // Return base structured data for pages
+    return {
+        ...baseStructuredData,
+        name: title,
+    };
+}
+
+/**
  * Generate Next.js metadata from WordPress SEO data
+ * @param seoData - SEO data from WordPress
+ * @param generalSettings - General WordPress settings
+ * @param baseUrl - Base URL of the site
+ * @param contentType - Type of content: 'page' for pages/homepage, 'post' for blog posts
  */
 export function generateMetadataFromSEO(
     seoData: PostSEOData | PageSEOData,
     generalSettings?: GeneralSettings,
-    baseUrl?: string
+    baseUrl?: string,
+    contentType: 'page' | 'post' = 'page'
 ): Metadata {
-    const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://optigrid.energy';
-    const fullUrl = `${siteUrl}/${seoData.slug}`;
+    const siteUrl = baseUrl || process.env.NEXT_PUBLIC_API_URL || '';
+    const fullUrl = seoData.slug === '' ? siteUrl : `${siteUrl}/${seoData.slug}`;
 
     // Use SEO title or fallback to post title
     const title = seoData.seo?.title || seoData.title;
@@ -61,18 +182,16 @@ export function generateMetadataFromSEO(
         ('excerpt' in seoData ? seoData.excerpt : '') ||
         generalSettings?.description;
 
-    // Use SEO image or fallback to featured image
-    const ogImage = seoData.seo?.opengraphImage?.sourceUrl;
 
     // Twitter description or fallback to meta description
     const twitterDescription = seoData.seo?.twitterDescription || description;
 
     // Twitter image or fallback to OpenGraph image
-    const twitterImage = seoData.seo?.twitterImage?.srcSet || ogImage;
+    const twitterImage = seoData.seo?.twitterImage?.srcSet || seoData.seo?.opengraphImage?.sourceUrl;
 
     const metadata: Metadata = {
         title,
-        description,
+        ...(description && { description }),
 
         // Canonical URL
         alternates: {
@@ -91,38 +210,15 @@ export function generateMetadataFromSEO(
         },
 
         // OpenGraph
-        openGraph: {
-            type: 'article',
-            title: seoData.seo?.title || title,
-            description: seoData.seo?.opengraphDescription || description,
-            url: fullUrl,
-            siteName: generalSettings?.title || 'OptiGrid',
-            locale: 'en_US', // can be made dynamic later
-            publishedTime: seoData.date,
-            modifiedTime: seoData.modified,
-            ...(ogImage && {
-                images: [
-                    {
-                        url: ogImage,
-                        alt: seoData.seo?.opengraphImage?.altText || title,
-                        width: 1200,
-                        height: 630,
-                        type: getImageType(ogImage),
-                    },
-                ],
-            }),
-            ...(seoData.seo?.opengraphAuthor && {
-                authors: [seoData.seo.opengraphAuthor],
-            }),
-        },
+        openGraph: getMetaOpenGraph(seoData, title, description || '', fullUrl, generalSettings, contentType),
 
         // Twitter
         twitter: {
             card: 'summary_large_image',
             title: seoData.seo?.title || title,
-            description: twitterDescription,
-            site: '@OptiGrid', // can be made dynamic from settings
-            creator: seoData.seo?.opengraphAuthor ? `@${seoData.seo.opengraphAuthor}` : '@OptiGrid',
+            ...(twitterDescription && { description: twitterDescription }),
+            ...(generalSettings?.title && { site: `@${generalSettings.title}` }),
+            ...(seoData.seo?.opengraphAuthor && { creator: `@${seoData.seo.opengraphAuthor}` }),
             ...(twitterImage && {
                 images: [
                     {
@@ -137,66 +233,72 @@ export function generateMetadataFromSEO(
 
         // JSON-LD Structured Data for better SEO
         other: {
-            'application/ld+json': JSON.stringify({
-                '@context': 'https://schema.org',
-                '@type': 'Article',
-                headline: title,
-                description: description,
-                datePublished: seoData.date,
-                dateModified: seoData.modified,
-                author: {
-                    '@type': 'Organization',
-                    name: seoData.seo?.opengraphAuthor || generalSettings?.title || 'OptiGrid',
-                },
-                publisher: {
-                    '@type': 'Organization',
-                    name: generalSettings?.title || 'OptiGrid',
-                    url: siteUrl,
-                },
-                url: fullUrl,
-                mainEntityOfPage: {
-                    '@type': 'WebPage',
-                    '@id': fullUrl,
-                },
-                ...(ogImage && {
-                    image: [
-                        {
-                            '@type': 'ImageObject',
-                            url: ogImage,
-                            width: 1200,
-                            height: 630,
-                            caption: seoData.seo?.opengraphImage?.altText || title,
-                        },
-                    ],
-                }),
-                ...(seoData.seo?.metaKeywords && {
-                    keywords: seoData.seo.metaKeywords.split(',').map(k => k.trim()),
-                }),
-            }),
+            'application/ld+json': JSON.stringify(
+                getMetaJsonLd(seoData, title, description || '', fullUrl, siteUrl, generalSettings, contentType)
+            ),
         },
     };
 
     return metadata;
 }
-
 /**
- * Generate metadata for not found pages
+ * Generate metadata for not found pages using WordPress general settings
+ * @param entityType - Type of entity (Page, Post, Service, etc.)
+ * @param baseUrl - Base URL of the site
+ * @param customTitle - Custom title for 404 page (fallback)
+ * @param customDescription - Custom description for 404 page (fallback)
  */
-export function generateNotFoundMetadata(
+export async function generateNotFoundMetadata(
     entityType: string = 'Page',
-    baseUrl?: string
-): Metadata {
-    const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://optigrid.energy';
+    baseUrl?: string,
+    customTitle?: string,
+    customDescription?: string
+): Promise<Metadata> {
+    const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || '';
+
+    let generalSettings;
+
+    // Always fetch general settings from WordPress
+    try {
+        generalSettings = await getGeneralSettings(['404', 'general-settings']);
+        console.log(generalSettings, 'generalSettings')
+    } catch (error) {
+        console.log('Failed to fetch WordPress general settings:', error);
+    }
+
+    const siteName = generalSettings?.title || 'Saga Advokat';
+    const defaultTitle = customTitle || `404 - ${siteName}`;
+    const defaultDescription = customDescription ||
+        generalSettings?.description ||
+        `The requested ${entityType.toLowerCase()} could not be found. Please check the URL or return to our homepage.`;
 
     return {
-        title: `${entityType} Not Found`,
-        description: `The requested ${entityType.toLowerCase()} could not be found.`,
+        title: defaultTitle,
+        ...(defaultDescription && { description: defaultDescription }),
         robots: {
             index: false, // 404 pages should never be indexed
-            follow: process.env.NEXT_PUBLIC_ENABLE_SEO_INDEXING === 'true',
+            follow: false, // Don't follow links on 404 pages
+            noarchive: true, // Don't cache 404 pages
+            nosnippet: true, // Don't show snippets for 404 pages
         },
         alternates: {
             canonical: siteUrl,
+        },
+        // Add structured data for 404 pages
+        other: {
+            'application-ld+json': JSON.stringify({
+                '@context': 'https://schema.org',
+                '@type': 'WebPage',
+                name: defaultTitle,
+                ...(defaultDescription && { description: defaultDescription }),
+                url: siteUrl,
+                mainEntity: {
+                    '@type': 'Organization',
+                    name: siteName,
+                    url: siteUrl,
+                    ...(generalSettings?.description && { description: generalSettings.description }),
+                }
+            }),
         },
     };
 }

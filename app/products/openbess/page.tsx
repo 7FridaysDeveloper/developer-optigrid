@@ -8,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { OPENBESS_FEATURE_CARDS } from "@/constants/consts";
 import { getSEOBySlug } from "@/graphql/api/seo";
-import { generateMetadataFromSEO } from "@/lib/seo";
+import {generateMetadataFromSEO} from "@/lib/seo";
 
 // Key benefits for the OpenBESS platform
 const PLATFORM_BENEFITS = [
@@ -35,7 +35,7 @@ export async function generateMetadata() {
       `${process.env.NEXT_PUBLIC_SITE_URL}/products`
     );
   } catch (error) {
-    return null;
+      return  null
   }
 }
 const FeatureCard = ({

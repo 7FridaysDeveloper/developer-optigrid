@@ -5,7 +5,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const tag = searchParams.get('tag');
     const secret = searchParams.get('secret');
-    console.log(tag)
     // Check secret key
     if (secret !== process.env.REVALIDATE_SECRET) {
         return NextResponse.json(
@@ -25,30 +24,20 @@ export async function GET(request: NextRequest) {
     try {
         if (tag === 'all') {
             // Clear all cache by revalidating common tags and paths
-            const commonTags = ['blog', 'sitemap', 'home', 'home-posts-picked'];
-            const commonPaths = ['/', '/blog', '/about', '/products', '/contact-us'];
-
-            // Revalidate all common tags
-            commonTags.forEach(commonTag => {
-                revalidateTag(commonTag);
-            });
-
-            // Revalidate all common paths
-            commonPaths.forEach(path => {
-                revalidatePath(path);
-            });
+            revalidateTag('all');
 
             return NextResponse.json({
                 success: true,
                 message: 'All cache cleared successfully',
                 revalidated: true,
-                tags: commonTags,
-                paths: commonPaths,
+                tags: 'all',
+                paths: 'all',
                 now: Date.now(),
             });
         } else {
             // Regular tag revalidation
             revalidateTag(tag);
+            revalidatePath(tag);
 
             return NextResponse.json({
                 success: true,

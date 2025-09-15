@@ -1,6 +1,6 @@
 import Products from "@/components/Products";
 import { getSEOBySlug } from "@/graphql/api/seo";
-import { generateMetadataFromSEO } from "@/lib/seo";
+import {generateMetadataFromSEO} from "@/lib/seo";
 export const dynamic = "force-static";
 export const revalidate = 3600;
 export async function generateMetadata() {
@@ -15,7 +15,7 @@ export async function generateMetadata() {
       `${process.env.NEXT_PUBLIC_SITE_URL}`
     );
   } catch (error) {
-    return null;
+    return  null
   }
 }
 export default function ProductsPage() {

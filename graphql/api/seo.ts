@@ -1,7 +1,7 @@
 // API client for fetching SEO data
 
 import { fetchGraphQl } from '../fetchGraphQl';
-import { GET_POST_SEO_QUERY, GET_PAGE_SEO_QUERY, PostSEOData, PageSEOData, GeneralSettings, PostSEOResponse, PageSEOResponse } from '../queries/seo';
+import { GET_POST_SEO_QUERY, GET_PAGE_SEO_QUERY, GET_GENERAL_SETTINGS_QUERY, PostSEOData, PageSEOData, GeneralSettings, PostSEOResponse, PageSEOResponse, GeneralSettingsResponse } from '../queries/seo';
 
 export interface SEOData {
     seoData: PostSEOData | PageSEOData;
@@ -31,4 +31,18 @@ export async function getSEOBySlug(
         seoData,
         generalSettings: data.generalSettings,
     };
+}
+
+/**
+ * Fetch only general WordPress settings (for 404 pages, global data, etc.)
+ */
+export async function getGeneralSettings(tags: string[] = []): Promise<GeneralSettings> {
+    const data = await fetchGraphQl<GeneralSettingsResponse>(
+        GET_GENERAL_SETTINGS_QUERY,
+        {},
+        tags,
+        'general-settings'
+    );
+
+    return data.generalSettings;
 }

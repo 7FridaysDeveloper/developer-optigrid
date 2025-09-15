@@ -16,7 +16,7 @@ export default async function Blogs({ idsPosts }: BlogCardProps) {
 
   const numberOfPosts = idsPosts.length
   try {
-    const wordPressPosts = await getPostsByIds(idsPosts, ['home', 'home-posts-picked']);
+    const wordPressPosts = await getPostsByIds(idsPosts);
     posts = transformWordPressPosts(wordPressPosts);
   } catch (err) {
     error = err instanceof Error ? err.message : 'Failed to load blog posts';

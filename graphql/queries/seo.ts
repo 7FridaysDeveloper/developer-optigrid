@@ -50,8 +50,14 @@ export interface PageSEOData {
 }
 
 export interface GeneralSettings {
-  description: string;
-  title: string;
+  description?: string;
+  title?: string;
+  url?: string;
+  language?: string;
+  startOfWeek?: number;
+  timeFormat?: string;
+  timezone?: string;
+  dateFormat?: string;
 }
 
 export interface PostSEOResponse {
@@ -61,6 +67,10 @@ export interface PostSEOResponse {
 
 export interface PageSEOResponse {
   pageBy: PageSEOData | null;
+  generalSettings: GeneralSettings;
+}
+
+export interface GeneralSettingsResponse {
   generalSettings: GeneralSettings;
 }
 
@@ -145,6 +155,21 @@ export const GET_PAGE_SEO_QUERY = `
     generalSettings {
       description
       title
+    }
+  }
+`;
+
+export const GET_GENERAL_SETTINGS_QUERY = `
+  query GetGeneralSettings {
+    generalSettings {
+      title
+      description
+      url
+      language
+      startOfWeek
+      timeFormat
+      timezone
+      dateFormat
     }
   }
 `;

@@ -15,6 +15,7 @@ import { getAllPosts } from "@/graphql/api/posts";
 // Route segment config for optimal static generation
 export const dynamic = "force-static";
 export const revalidate = 600;
+export const dynamicParams = false; // Only allow pre-generated paths
 
 interface BlogDetailPageProps {
     params: {
@@ -27,10 +28,15 @@ interface BlogDetailPageProps {
  * This enables static site generation (SSG) for better performance
  */
 export async function generateStaticParams() {
-    const posts = await getAllPosts();
-    // Generate static params for all blog posts at build time
-    // This ensures all blog posts are statically generated for optimal performance
-    return posts?.map(post => ({ slug: post.slug })) ?? [];
+    try {
+        const posts = await getAllPosts();
+        const params = posts?.map(post => ({ slug: post.slug })) ?? [];
+        console.log('Generated static params for blog posts:', params.length);
+        return params;
+    } catch (error) {
+        console.error('Error generating static params for blog posts:', error);
+        return [];
+    }
 }
 
 /**
@@ -48,10 +54,16 @@ export async function generateMetadata({ params }: BlogDetailPageProps) {
         return generateMetadataFromSEO(
             seoData.seoData,
             seoData.generalSettings,
-            `${process.env.NEXT_PUBLIC_SITE_URL}/blog`
+            `${process.env.NEXT_PUBLIC_SITE_URL}/blog`,
+            'post'
         );
     } catch (error) {
-        return generateNotFoundMetadata('Blog Post', `${process.env.NEXT_PUBLIC_SITE_URL}/blogs`);
+        return await generateNotFoundMetadata(
+            'Blog Post',
+            `${process.env.NEXT_PUBLIC_SITE_URL}`,
+            undefined,
+            'Oops! The page you were looking for does not exist.'
+        );
     }
 }
 
@@ -71,77 +83,89 @@ const BlogDetailPage = async ({ params }: BlogDetailPageProps) => {
     // Ensure params is properly resolved for static generation
     const { slug } = await params;
 
+    let post;
+
     try {
-        const post = await getPostBySlug(slug);
-        console.log(post)
-        // Check if post is published, redirect to 404 if not
+        post = await getPostBySlug(slug);
+
+        // Check if post exists and is published
         if (!post || post.status !== 'publish') {
+            console.log('Post not found or not published:', { slug, post: post?.status });
             notFound();
         }
+    } catch (error) {
+        console.log('Error fetching post:', error);
+        notFound();
+    }
 
-        const currentUrl = getBlogUrl(post.slug);
+    // If we reach here, post exists and is valid
+    const currentUrl = getBlogUrl(post.slug);
 
-        return (
-            <div className="bg-foundation-color min-h-screen">
-                <div className="container mx-auto pt-24">
-                    <Breadcrumb
-                        items={[
-                            { label: "News & Insights", href: "/blog" },
-                            { label: post.title },
-                        ]}
-                    />
+    return (
+        <div className="bg-foundation-color min-h-screen">
+            <div className="container mx-auto pt-24">
+                <Breadcrumb
+                    items={[
+                        { label: "News & Insights", href: "/blog" },
+                        { label: post.title },
+                    ]}
+                />
 
-                    {/* Featured image banner */}
-                    <div className="relative mb-5 h-64 w-full overflow-hidden rounded-lg md:h-96 lg:mb-10">
-                        <Image
-                            src={post.featuredImage?.node?.sourceUrl ?? ''}
-                            alt={post.title}
-                            fill
-                            className="object-cover1"
-                            priority
-                        />
-                    </div>
-
-                    {/* Main content area with flexbox layout */}
-                    <div className="flex flex-col gap-6 lg:flex-row">
-                        {/* Left column - Header and Content */}
-                        <div className="flex-1">
-                            {/* Header section */}
-                            <header className="mb-8">
-                                <h1 className="mb-6 text-2xl leading-tight font-bold text-white lg:text-4xl">
-                                    {post.title}
-                                </h1>
-                                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                                    <BlogMetadata post={transformWordPressPost(post)} />
-                                </div>
-                            </header>
-
-                            {/* Content section */}
-                            <div className="mb-8">
-                                {post.content && <BlogContent content={post.content} />}
-                            </div>
-                        </div>
-
-                        {/* Right column - Sidebar */}
-                        <div className="w-[20%] items-center justify-center">
-                            <BlogSidebar
-                                content={post.content}
-                                title={post.title}
-                                url={currentUrl}
+                {/* Featured image banner */}
+                {post.featuredImage?.node?.sourceUrl && (
+                    <div className="flex justify-center mb-5 w-full lg:mb-10">
+                        <div className="relative inline-block rounded-lg overflow-hidden bg-gray-800">
+                            <Image
+                                src={post.featuredImage.node.sourceUrl}
+                                alt={post.title}
+                                width={0}
+                                height={0}
+                                className="max-w-full h-auto"
+                                style={{ width: 'auto', height: 'auto' }}
+                                priority
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 70vw"
                             />
                         </div>
                     </div>
+                )}
 
-                    {post.relatedPosts?.length && (
-                        <RelatedArticles articles={transformWordPressRelatedPosts(post.relatedPosts)} />
-                    )}
+                {/* Main content area with flexbox layout */}
+                <div className="flex flex-col gap-6 lg:flex-row">
+                    {/* Left column - Header and Content */}
+                    <div className="flex-1">
+                        {/* Header section */}
+                        <header className="mb-8">
+                            <h1 className="mb-6 text-2xl leading-tight font-bold text-white lg:text-4xl">
+                                {post.title}
+                            </h1>
+                            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                                <BlogMetadata post={transformWordPressPost(post)} />
+                            </div>
+                        </header>
+
+                        {/* Content section */}
+                        <div className="mb-8">
+                            {post.content && <BlogContent content={post.content} />}
+                        </div>
+                    </div>
+
+                    {/* Right column - Sidebar */}
+                    <div className="w-[20%] items-center justify-center">
+                        <BlogSidebar
+                            content={post.content}
+                            title={post.title}
+                            url={currentUrl}
+                        />
+                    </div>
                 </div>
+
+                {post.relatedPosts?.length && (
+                    <RelatedArticles articles={transformWordPressRelatedPosts(post.relatedPosts)} />
+                )}
             </div>
-        );
-    } catch (error) {
-        console.log('error component')
-        notFound();
-    }
+        </div>
+    );
+
 };
 
 export default BlogDetailPage;

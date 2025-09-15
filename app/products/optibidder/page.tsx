@@ -11,7 +11,7 @@ import Link from "next/link";
 import HowWereDifferent from "@/components/AdvantageSection";
 import OptibidderFeatures from "@/components/OptibidderFeatures";
 import { getSEOBySlug } from "@/graphql/api/seo";
-import { generateMetadataFromSEO } from "@/lib/seo";
+import {generateMetadataFromSEO} from "@/lib/seo";
 export const dynamic = "force-static";
 export async function generateMetadata() {
   try {
@@ -24,8 +24,7 @@ export async function generateMetadata() {
       `${process.env.NEXT_PUBLIC_SITE_URL}/products`
     );
   } catch (error) {
-    console.log('error seo', 'optibidder')
-    return null;
+      return  null;
   }
 }
 async function OptiBidder() {

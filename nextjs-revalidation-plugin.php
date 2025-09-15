@@ -53,7 +53,7 @@ class NextJSRevalidation {
             
             // Warm cache for blogs page (post page will 404)
             $this->warm_cache_pages(array(
-                "/blog/{$post_slug}",
+                $this->get_page_url($post_slug, 'post'),
                 "/blog"
             ));
             
@@ -89,7 +89,7 @@ class NextJSRevalidation {
         if ($post->post_type === 'post') {
             // Handle posts
             $tags_to_revalidate[] = $slug;
-            $urls_to_warm[] = "/blog/{$slug}";
+            $urls_to_warm[] = $this->get_page_url($slug, 'post');
 
             // If post is or was published, also revalidate blogs and sitemap
             if ($current_status === 'publish' || $previous_status === 'publish') {
@@ -104,7 +104,7 @@ class NextJSRevalidation {
             // Handle pages - only for published pages
             if ($current_status === 'publish') {
                 $tags_to_revalidate[] = $slug;
-                $urls_to_warm[] = "/{$slug}";
+                $urls_to_warm[] = $this->get_page_url($slug, 'page');
             }
 
             error_log("NextJS Revalidation: Page after insert - {$slug} (status: {$current_status})");
@@ -121,6 +121,29 @@ class NextJSRevalidation {
         }
     }
 
+    
+    /**
+     * Map page slug to the actual URL path
+     */
+    private function get_page_url($slug, $post_type = 'page') {
+        if ($post_type === 'post') {
+            return "/blog/{$slug}";
+        }
+        
+        if ($post_type === 'page') {
+            // Special mappings for pages
+            $page_mappings = array(
+                'home' => '/',
+                'openbess' => '/products/openbess',
+                'optibidder' => '/products/optibidder'
+            );
+            
+            // Return mapped URL or default to /{slug}
+            return isset($page_mappings[$slug]) ? $page_mappings[$slug] : "/{$slug}";
+        }
+        
+        return "/{$slug}";
+    }
     
     /**
      * Warm up cache for specific pages using multi-cURL

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
 import { getSEOBySlug } from "@/graphql/api/seo";
-import { generateMetadataFromSEO } from "@/lib/seo";
+import {generateMetadataFromSEO} from "@/lib/seo";
 export async function generateMetadata() {
   try {
     const seoData = await getSEOBySlug('about-us', 'page', ['about-us']);
