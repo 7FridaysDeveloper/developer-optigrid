@@ -266,12 +266,11 @@ export async function generateNotFoundMetadata(
         console.log('Failed to fetch WordPress general settings:', error);
     }
 
-    const siteName = generalSettings?.title || 'Saga Advokat';
+    const siteName = generalSettings?.title || 'OptiGrid';
     const defaultTitle = customTitle || `404 - ${siteName}`;
     const defaultDescription = customDescription ||
         generalSettings?.description ||
         `The requested ${entityType.toLowerCase()} could not be found. Please check the URL or return to our homepage.`;
-    console.log(defaultTitle, 'defaultTitle')
     return {
         title: defaultTitle,
         ...(defaultDescription && { description: defaultDescription }),

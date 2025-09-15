@@ -62,7 +62,7 @@ export async function generateMetadata({ params }: BlogDetailPageProps) {
             'Post',
             `${process.env.NEXT_PUBLIC_SITE_URL}`,
             undefined,
-            'Oops! The page you were looking for does not exist.'
+            'Oops! The post you were looking for does not exist.'
         );
     }
 }
