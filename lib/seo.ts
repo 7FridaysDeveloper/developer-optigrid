@@ -271,7 +271,7 @@ export async function generateNotFoundMetadata(
     const defaultDescription = customDescription ||
         generalSettings?.description ||
         `The requested ${entityType.toLowerCase()} could not be found. Please check the URL or return to our homepage.`;
-
+    console.log(defaultTitle, 'defaultTitle')
     return {
         title: defaultTitle,
         ...(defaultDescription && { description: defaultDescription }),
