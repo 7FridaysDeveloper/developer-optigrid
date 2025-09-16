@@ -15,7 +15,6 @@ import { getAllPosts } from "@/graphql/api/posts";
 // Route segment config for optimal static generation
 export const dynamic = "force-static";
 export const revalidate = 600;
-export const dynamicParams = false; // Only allow pre-generated paths
 
 interface BlogDetailPageProps {
     params: {
@@ -87,7 +86,7 @@ const BlogDetailPage = async ({ params }: BlogDetailPageProps) => {
 
     try {
         post = await getPostBySlug(slug);
-
+        console.log(post, 'post')
         // Check if post exists and is published
         if (!post || post.status !== 'publish') {
             console.log('Post not found or not published:', { slug, post: post?.status });
