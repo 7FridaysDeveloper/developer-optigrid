@@ -348,7 +348,7 @@ const ContactUs = () => {
                   )}
                 />
 
-                {/* reCAPTCHA v3 працює невидимо */}
+                {/* reCAPTCHA v3 */}
 
                 {/* Submit Button */}
                 <Button
