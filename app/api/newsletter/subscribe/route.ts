@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { contactFormSchema } from '@/lib/schemas';
+import { z } from 'zod';
 import { buildGravityFormsEndpoint, createWordPressAuthHeader } from '@/lib/wordpress-utils';
 
-interface GravityFormsSubmission {
-    input_14: string; // Your name
-    input_7: string;  // Work email
-    input_5?: string; // Preferred meeting date
-    input_9?: string; // Phone number
-    input_6: string;  // Tell us more
+// Newsletter form validation schema
+const newsletterSchema = z.object({
+    email: z.string().email("Please enter a valid email address"),
+    recaptchaToken: z.string().nullable().optional(),
+});
+
+interface GravityFormsNewsletterSubmission {
+    input_1: string; // Email field
 }
 
 export async function POST(request: NextRequest) {
@@ -15,7 +17,7 @@ export async function POST(request: NextRequest) {
         const data = await request.json();
 
         // Validate the incoming data
-        const validatedData = contactFormSchema.parse(data);
+        const validatedData = newsletterSchema.parse(data);
 
         // Verify reCAPTCHA v3 token
         if (!validatedData.recaptchaToken || validatedData.recaptchaToken === null) {
@@ -53,7 +55,6 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             );
         }
-
         // Check reCAPTCHA score (v3 specific - higher is better, 0.0-1.0)
         if (recaptchaResult.score < 0.4) {
             return NextResponse.json(
@@ -66,24 +67,12 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Convert Next.js form data to Gravity Forms format
-        const gravityFormsData: GravityFormsSubmission = {
-            input_14: validatedData.first_name,
-            input_7: validatedData.email,
-            input_6: validatedData.message,
+        // Convert to Gravity Forms format
+        const gravityFormsData: GravityFormsNewsletterSubmission = {
+            input_1: validatedData.email,
         };
 
-
-        // Add optional fields if provided
-        if (validatedData.meetingDate) {
-            gravityFormsData.input_5 = validatedData.meetingDate;
-        }
-
-        if (validatedData.phone) {
-            gravityFormsData.input_9 = validatedData.phone;
-        }
-
-        // Get Gravity Forms endpoint and credentials
+        // Get Gravity Forms credentials
         const gravityFormsUsername = process.env.GRAVITY_FORMS_USERNAME;
         const gravityFormsPassword = process.env.GRAVITY_FORMS_PASSWORD;
 
@@ -91,8 +80,8 @@ export async function POST(request: NextRequest) {
             throw new Error('Gravity Forms credentials are missing');
         }
 
-        // Build endpoint and auth header using utility functions
-        const gravityFormsEndpoint = buildGravityFormsEndpoint(2);
+        // Build endpoint and auth header for newsletter form (ID=1)
+        const gravityFormsEndpoint = buildGravityFormsEndpoint(1);
         const credentials = createWordPressAuthHeader(gravityFormsUsername, gravityFormsPassword);
 
         // Submit to Gravity Forms
@@ -108,23 +97,10 @@ export async function POST(request: NextRequest) {
         const gravityResponseData = await gravityResponse.json();
 
         if (!gravityResponse.ok) {
-
-            // Check if it's a reCAPTCHA error
-            if (gravityResponseData.message && gravityResponseData.message.includes('recaptcha')) {
-                return NextResponse.json(
-                    {
-                        status: 'error',
-                        error: 'reCAPTCHA verification failed. Please try again.',
-                        message: 'Please complete the reCAPTCHA verification.'
-                    },
-                    { status: 400 }
-                );
-            }
-
             return NextResponse.json(
                 {
                     status: 'error',
-                    error: 'Form submission failed. Please try again.',
+                    error: 'Newsletter subscription failed. Please try again.',
                     message: gravityResponseData.message || 'Unknown error occurred.'
                 },
                 { status: gravityResponse.status }
@@ -134,7 +110,8 @@ export async function POST(request: NextRequest) {
         // Success response
         return NextResponse.json({
             status: 'success',
-            message: 'Thank you for your message! We will get back to you soon.',
+            success: true,
+            message: "Thanks for subscribing to OptiGrid's newsletter!",
             id: gravityResponseData.id || null,
         });
 
@@ -144,9 +121,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 {
                     status: 'error',
-                    error: 'Invalid form data. Please check your inputs.',
-                    message: 'Please fill in all required fields correctly.',
-                    details: error
+                    error: 'Invalid email address. Please check your input.',
+                    message: 'Please enter a valid email address.'
                 },
                 { status: 400 }
             );

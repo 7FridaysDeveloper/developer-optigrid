@@ -2,16 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { toast } from "sonner";
 import { newsletterApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 
 const Footer = () => {
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [isNewsletterSubmitting, setIsNewsletterSubmitting] = useState(false);
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
-  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+  const handleNewsletterSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!newsletterEmail.trim()) {
@@ -19,11 +21,32 @@ const Footer = () => {
       return;
     }
 
+    if (!executeRecaptcha) {
+      toast.error("Security verification not ready", {
+        description: "Please wait a moment and try again.",
+        duration: 5000,
+      });
+      return;
+    }
+
     setIsNewsletterSubmitting(true);
 
     try {
+      // Execute reCAPTCHA v3
+      const recaptchaToken = await executeRecaptcha('newsletter_subscribe');
+
+      if (!recaptchaToken) {
+        toast.error("Security verification failed", {
+          description: "Please refresh the page and try again.",
+          duration: 5000,
+        });
+        setIsNewsletterSubmitting(false);
+        return;
+      }
+
       const response = await newsletterApi.subscribe({
         email: newsletterEmail.trim(),
+        recaptchaToken,
       });
 
       // Check if the response indicates success (either response.success or response.status === "success")
@@ -41,7 +64,6 @@ const Footer = () => {
         );
       }
     } catch (error) {
-      console.error("Newsletter subscription error:", error);
       toast.error("Failed to subscribe to newsletter", {
         description: "Please try again or contact us directly.",
         duration: 5000,

@@ -3,7 +3,7 @@ export const config = {
     baseUrl: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
     endpoints: {
       contact: "/api/contact/",
-      newsletter: "/newsletter/subscribe",
+      newsletter: "/api/newsletter/subscribe/",
     },
   },
 } as const;

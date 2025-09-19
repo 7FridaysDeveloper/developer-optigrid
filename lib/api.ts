@@ -3,6 +3,7 @@ import type { ContactFormData } from "./schemas";
 
 export interface NewsletterSubscriptionData {
   email: string;
+  recaptchaToken?: string;
 }
 
 export interface ApiResponse<T = unknown> {
