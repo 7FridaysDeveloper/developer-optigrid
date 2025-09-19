@@ -1,4 +1,3 @@
-import React from "react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -15,7 +14,6 @@ import { getAllPosts } from "@/graphql/api/posts";
 // Route segment config for optimal static generation
 export const dynamic = "force-static";
 export const revalidate = 600;
-
 interface BlogDetailPageProps {
     params: {
         slug: string;
@@ -86,7 +84,7 @@ const BlogDetailPage = async ({ params }: BlogDetailPageProps) => {
 
     try {
         post = await getPostBySlug(slug);
-        console.log(post, 'post')
+
         // Check if post exists and is published
         if (!post || post.status !== 'publish') {
             console.log('Post not found or not published:', { slug, post: post?.status });

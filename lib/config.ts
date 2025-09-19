@@ -1,8 +1,8 @@
 export const config = {
   api: {
-    baseUrl: process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000",
+    baseUrl: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
     endpoints: {
-      contact: "/contact/",
+      contact: "/api/contact/",
       newsletter: "/newsletter/subscribe",
     },
   },

@@ -1,5 +1,5 @@
 import { getSEOBySlug } from "@/graphql/api/seo";
-import {generateMetadataFromSEO} from "@/lib/seo";
+import { generateMetadataFromSEO } from "@/lib/seo";
 import ContactUs from "@/components/forms/contact-us";
 
 /**
@@ -27,7 +27,7 @@ export async function generateMetadata() {
             `${process.env.NEXT_PUBLIC_SITE_URL}`
         );
     } catch (error) {
-        return  null
+        return null
     }
 }
 

@@ -42,15 +42,14 @@ export const apiClient = {
         ...options,
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new ApiError(
-          `HTTP error! status: ${response.status}`,
-          response.status,
-          response,
-        );
+        // Use structured error message if available
+        const errorMessage = result?.error || result?.message || `HTTP error! status: ${response.status}`;
+        throw new ApiError(errorMessage, response.status, response);
       }
 
-      const result = await response.json();
       return result;
     } catch (error) {
       if (error instanceof ApiError) {
@@ -77,15 +76,14 @@ export const apiClient = {
         ...options,
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new ApiError(
-          `HTTP error! status: ${response.status}`,
-          response.status,
-          response,
-        );
+        // Use structured error message if available
+        const errorMessage = result?.error || result?.message || `HTTP error! status: ${response.status}`;
+        throw new ApiError(errorMessage, response.status, response);
       }
 
-      const result = await response.json();
       return result;
     } catch (error) {
       if (error instanceof ApiError) {

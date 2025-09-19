@@ -26,6 +26,3 @@ export default function robots(): MetadataRoute.Robots {
     }
 }
 
-function darw() {
-
-}

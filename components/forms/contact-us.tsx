@@ -3,7 +3,7 @@
 import React, { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import ReCAPTCHA from "react-google-recaptcha";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,7 @@ import Partners from "@/components/Partners";
 
 const ContactUs = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
@@ -33,19 +33,40 @@ const ContactUs = () => {
       meetingDate: "",
       email: "",
       message: "",
-      // recaptchaToken: "",
     },
   });
 
-  // const onRecaptchaChange = (token: string | null) => {
-  //   form.setValue("recaptchaToken", token || "");
-  // };
-
   const onSubmit = async (data: ContactFormData) => {
+    if (!executeRecaptcha) {
+      toast.error("Security verification not ready", {
+        description: "Please wait a moment and try again.",
+        duration: 5000,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const response = await contactApi.submit(data);
+      // Execute reCAPTCHA v3
+      const recaptchaToken = await executeRecaptcha('contact_form');
+
+      if (!recaptchaToken) {
+        toast.error("Security verification failed", {
+          description: "Please refresh the page and try again.",
+          duration: 5000,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Add reCAPTCHA token to form data
+      const formDataWithRecaptcha = {
+        ...data,
+        recaptchaToken,
+      };
+
+      const response = await contactApi.submit(formDataWithRecaptcha);
 
       // Check if the response indicates success
       if (response.status === "success") {
@@ -54,16 +75,23 @@ const ContactUs = () => {
           duration: 5000,
         });
         form.reset();
-        recaptchaRef.current?.reset();
       } else {
         throw new Error(
           response.error || response.message || "Submission failed",
         );
       }
     } catch (error) {
-      console.error("Form submission error:", error);
-      toast.error("Failed to send message", {
-        description: "Please try again or contact us directly.",
+
+      // Try to extract error message from API response
+      let errorMessage = "Failed to send message";
+      let errorDescription = "Please try again or contact us directly.";
+
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorDescription = error.message as string;
+      }
+
+      toast.error(errorMessage, {
+        description: errorDescription,
         duration: 5000,
       });
     } finally {
@@ -320,23 +348,7 @@ const ContactUs = () => {
                   )}
                 />
 
-                {/* reCAPTCHA */}
-                {/* <div className="flex justify-center">
-                  <ReCAPTCHA
-                    ref={recaptchaRef}
-                    sitekey={
-                      process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
-                      "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
-                    }
-                    onChange={onRecaptchaChange}
-                    theme="dark"
-                  />
-                </div>
-                {form.formState.errors.recaptchaToken && (
-                  <p className="text-center text-sm text-red-400">
-                    {form.formState.errors.recaptchaToken.message}
-                  </p>
-                )} */}
+                {/* reCAPTCHA v3 працює невидимо */}
 
                 {/* Submit Button */}
                 <Button
