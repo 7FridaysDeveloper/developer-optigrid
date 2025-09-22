@@ -6,6 +6,7 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { Toaster } from "sonner";
 import { ReactNode } from "react";
 import { RecaptchaProvider } from "@/lib/providers/RecaptchaProvider";
+import { GoogleAnalytics } from '@next/third-parties/google'
 import "./globals.css";
 
 const inter = Inter({
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} gradient-bg relative pb-9 font-sans antialiased`}
       >
+      <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID as string} />
         <RecaptchaProvider>
           <header>
             <NavBar />
