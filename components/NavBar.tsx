@@ -226,7 +226,7 @@ const NavBar = () => {
               variant="ghost"
               className="block w-full justify-start py-2 text-white transition hover:bg-transparent"
             >
-              <Link href="/about" onClick={handleNavigation}>
+              <Link href="/about-us" onClick={handleNavigation}>
                 About us
               </Link>
             </Button>
